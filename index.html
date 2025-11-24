@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MindCare</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        slate: { 850: '#1e293b', 900: '#0f172a' }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        
+        .scrollbar-thin::-webkit-scrollbar { width: 6px; }
+        .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background-color: #CBD5E1; border-radius: 20px; }
+        .dark .scrollbar-thin::-webkit-scrollbar-thumb { background-color: #475569; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        .typing-dot { animation: typing 1.4s infinite ease-in-out both; }
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+        
+        /* Fix for mobile height issues */
+        .h-safe-screen { height: 100vh; height: 100dvh; }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-gray-100 h-safe-screen overflow-hidden flex flex-col transition-colors duration-300">
+
+    <div id="loading-screen" class="fixed inset-0 z-[100] bg-gray-50 dark:bg-slate-900 flex flex-col items-center justify-center transition-opacity duration-500 overflow-y-auto py-10">
+        <div id="loading-spinner" class="flex flex-col items-center">
+            <i data-lucide="loader-2" class="animate-spin text-teal-600 dark:text-teal-400 w-12 h-12 mb-4"></i>
+            <p class="text-teal-600 dark:text-teal-400 font-medium animate-pulse">Starting MindCare...</p>
+        </div>
+        
+        <div id="config-panel" class="hidden w-full max-w-lg bg-white dark:bg-slate-800 rounded-3xl shadow-xl border border-gray-100 dark:border-slate-700 mx-4 overflow-hidden animate-fade-in my-auto">
+            <div class="bg-teal-600 p-8 text-white text-center">
+                <i data-lucide="settings-2" class="w-12 h-12 mx-auto mb-3 opacity-90"></i>
+                <h3 class="font-bold text-2xl">Welcome</h3>
+                <p class="text-teal-100 text-sm mt-1">Let's set up your safe space.</p>
+            </div>
+            
+            <div class="p-8 space-y-6">
+                <div class="space-y-2">
+                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide flex justify-between">
+                        1. Google Gemini API Key
+                        <span class="text-teal-600 dark:text-teal-400 font-normal normal-case">Recommended</span>
+                    </label>
+                    <input type="text" id="api-key-input" placeholder="AIzaSy..." 
+                           class="w-full p-4 rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white text-sm focus:ring-2 focus:ring-teal-500 outline-none font-mono">
+                    <p class="text-[10px] text-gray-400">Needed for AI Chat & Meditation generation. <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-teal-600 dark:text-teal-400 underline">Get Free Key</a></p>
+                </div>
+
+                <div class="space-y-2 pt-4 border-t border-gray-100 dark:border-slate-700">
+                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
+                        2. Firebase Config (Optional)
+                    </label>
+                    <textarea id="firebase-config-input" rows="3" placeholder='{ "apiKey": "...", "authDomain": "..." }' 
+                           class="w-full p-4 rounded-xl border border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-700 dark:text-white text-xs focus:ring-2 focus:ring-teal-500 outline-none font-mono"></textarea>
+                    <p class="text-[10px] text-gray-400">Leave empty for <strong>Offline Demo Mode</strong>.</p>
+                </div>
+
+                <button onclick="handleSetup()" id="start-btn" class="w-full flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700 text-white py-4 rounded-xl font-bold transition shadow-lg shadow-teal-100 dark:shadow-none transform active:scale-[0.98]">
+                    Enter MindCare <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                </button>
+                <p id="setup-error" class="text-red-500 text-xs text-center hidden"></p>
+            </div>
+        </div>
+    </div>
+
+    <nav class="w-full bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 shadow-sm z-50 flex-shrink-0 h-16 lg:h-20 transition-colors duration-300">
+        <div class="max-w-7xl mx-auto h-full px-4 lg:px-8 flex justify-between items-center">
+            
+            <div class="flex items-center space-x-3 text-teal-600 dark:text-teal-400 cursor-pointer group" onclick="router('home')">
+                <div class="p-2 bg-teal-50 dark:bg-teal-900/50 rounded-xl group-hover:scale-110 transition">
+                    <i data-lucide="heart" class="fill-current w-6 h-6"></i>
+                </div>
+                <span class="text-xl lg:text-2xl font-bold tracking-tight text-gray-900 dark:text-white">MindCare</span>
+            </div>
+
+            <div class="hidden md:flex items-center space-x-2">
+                <button onclick="router('home')" id="nav-home" class="nav-item flex items-center space-x-2 px-4 py-2.5 rounded-xl transition-all font-medium text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-slate-700">
+                    <i data-lucide="home" class="w-4 h-4"></i> <span>Home</span>
+                </button>
+                <button onclick="router('journal')" id="nav-journal" class="nav-item flex items-center space-x-2 px-4 py-2.5 rounded-xl transition-all font-medium text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700">
+                    <i data-lucide="book-open" class="w-4 h-4"></i> <span>Journal</span>
+                </button>
+                <button onclick="router('meditation')" id="nav-meditation" class="nav-item flex items-center space-x-2 px-4 py-2.5 rounded-xl transition-all font-medium text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700">
+                    <i data-lucide="flower-2" class="w-4 h-4"></i> <span>Meditate</span>
+                </button>
+                <button onclick="router('chat')" id="nav-chat" class="nav-item flex items-center space-x-2 px-4 py-2.5 rounded-xl transition-all font-medium text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700">
+                    <i data-lucide="message-circle" class="w-4 h-4"></i> <span>Chat</span>
+                </button>
+                <button onclick="router('resources')" id="nav-resources" class="nav-item flex items-center space-x-2 px-4 py-2.5 rounded-xl transition-all font-medium text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700">
+                    <i data-lucide="library" class="w-4 h-4"></i> <span>Help</span>
+                </button>
+                <div class="w-px h-8 bg-gray-200 dark:bg-slate-700 mx-2"></div>
+                <button onclick="toggleDarkMode()" class="p-2.5 text-gray-400 hover:text-teal-600 dark:text-gray-400 dark:hover:text-teal-400 transition bg-gray-50 dark:bg-slate-700 rounded-xl">
+                    <i data-lucide="moon" id="dark-icon" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="flex md:hidden gap-2">
+                <button onclick="toggleDarkMode()" class="p-2 text-gray-500 dark:text-gray-400">
+                    <i data-lucide="moon" class="w-6 h-6"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-1 relative h-full overflow-hidden bg-gray-50 dark:bg-slate-950 transition-colors duration-300">
+        
+        <div id="view-home" class="view-section absolute inset-0 overflow-y-auto p-4 md:p-8 space-y-8">
+            <div class="max-w-7xl mx-auto w-full space-y-8 pb-20">
+                
+                <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-gray-200 dark:border-slate-800 pb-6">
+                    <div>
+                        <h1 class="text-3xl md:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight">Welcome to MindCare</h1>
+                        <p class="text-lg text-gray-500 dark:text-gray-400 mt-1">Your daily space for peace and reflection.</p>
+                    </div>
+                    <div class="bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300 px-5 py-3 rounded-2xl text-sm font-bold flex items-center shadow-sm border border-orange-100 dark:border-orange-800/50">
+                        <span class="mr-2 text-xl">🔥</span> <span id="streak-count" class="text-lg">0</span> <span class="ml-1">Day Streak</span>
+                    </div>
+                </header>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
+                    <div class="lg:col-span-7 space-y-6">
+                        <div id="mood-container" class="bg-white dark:bg-slate-800 p-6 md:p-8 rounded-[2rem] shadow-sm border border-gray-100 dark:border-slate-700 transition-all duration-300"></div>
+                        
+                        <div class="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-[2rem] p-8 text-white shadow-lg relative overflow-hidden group">
+                            <div class="relative z-10">
+                                <div class="flex justify-between items-start mb-6">
+                                    <h3 class="text-sm font-bold opacity-80 uppercase tracking-wider bg-white/10 px-3 py-1 rounded-full">Daily Whisper</h3>
+                                    <button onclick="generateDailyQuote()" class="bg-white/10 hover:bg-white/20 p-2 rounded-full transition-all"><i data-lucide="refresh-cw" class="w-5 h-5"></i></button>
+                                </div>
+                                <div id="quote-content">
+                                    <p class="text-2xl md:text-3xl font-medium leading-relaxed">"You don't have to control your thoughts. You just have to stop letting them control you."</p>
+                                    <p class="mt-4 text-indigo-200 font-medium text-lg">— Dan Millman</p>
+                                </div>
+                            </div>
+                            <i data-lucide="quote" class="absolute right-4 top-4 w-48 h-48 text-white opacity-5 rotate-12"></i>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-5 flex flex-col h-full">
+                        <div class="bg-white dark:bg-slate-800 rounded-[2rem] p-6 md:p-8 shadow-sm border border-gray-100 dark:border-slate-700 h-full">
+                            <h3 class="font-bold text-gray-900 dark:text-white text-xl mb-6 flex items-center gap-2">
+                                <i data-lucide="zap" class="w-6 h-6 text-yellow-500 fill-current"></i> Quick Actions
+                            </h3>
+                            <div class="grid grid-cols-2 gap-4 h-full">
+                                <div onclick="router('meditation')" class="bg-teal-50 dark:bg-teal-900/20 p-6 rounded-3xl cursor-pointer hover:bg-teal-100 dark:hover:bg-teal-900/40 transition border border-teal-100 dark:border-teal-800 group flex flex-col items-center justify-center text-center gap-3 min-h-[160px]">
+                                    <div class="bg-white dark:bg-slate-800 w-14 h-14 rounded-2xl flex items-center justify-center text-teal-600 dark:text-teal-400 shadow-sm group-hover:scale-110 transition"><i data-lucide="flower-2" class="w-8 h-8"></i></div>
+                                    <h4 class="font-bold text-lg text-gray-900 dark:text-gray-100">Meditate</h4>
+                                </div>
+                                <div onclick="router('resources')" class="bg-purple-50 dark:bg-purple-900/20 p-6 rounded-3xl cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-900/40 transition border border-purple-100 dark:border-purple-800 group flex flex-col items-center justify-center text-center gap-3 min-h-[160px]">
+                                    <div class="bg-white dark:bg-slate-800 w-14 h-14 rounded-2xl flex items-center justify-center text-purple-600 dark:text-purple-400 shadow-sm group-hover:scale-110 transition"><i data-lucide="library" class="w-8 h-8"></i></div>
+                                    <h4 class="font-bold text-lg text-gray-900 dark:text-gray-100">Help & Tips</h4>
+                                </div>
+                                <div onclick="router('journal')" class="bg-blue-50 dark:bg-blue-900/20 p-6 rounded-3xl cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/40 transition border border-blue-100 dark:border-blue-800 group flex flex-col items-center justify-center text-center gap-3 min-h-[160px]">
+                                    <div class="bg-white dark:bg-slate-800 w-14 h-14 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-sm group-hover:scale-110 transition"><i data-lucide="book-open" class="w-8 h-8"></i></div>
+                                    <h4 class="font-bold text-lg text-gray-900 dark:text-gray-100">Journal</h4>
+                                </div>
+                                <div onclick="router('chat')" class="bg-indigo-50 dark:bg-indigo-900/20 p-6 rounded-3xl cursor-pointer hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition border border-indigo-100 dark:border-indigo-800 group flex flex-col items-center justify-center text-center gap-3 min-h-[160px]">
+                                    <div class="bg-white dark:bg-slate-800 w-14 h-14 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-sm group-hover:scale-110 transition"><i data-lucide="message-circle" class="w-8 h-8"></i></div>
+                                    <h4 class="font-bold text-lg text-gray-900 dark:text-gray-100">AI Chat</h4>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-meditation" class="view-section hidden absolute inset-0 overflow-y-auto p-4 md:p-8 space-y-6">
+            <div class="max-w-5xl mx-auto space-y-8 pb-20">
+                <header>
+                    <h2 class="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+                        <div class="bg-teal-100 dark:bg-teal-900 p-2 rounded-xl"><i data-lucide="flower-2" class="text-teal-600 dark:text-teal-400 w-8 h-8"></i></div>
+                        Meditation Studio
+                    </h2>
+                    <p class="text-gray-500 dark:text-gray-400 mt-2 text-lg">Customize your environment and generate a guided session.</p>
+                </header>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="lg:col-span-1">
+                        <div class="p-6 bg-white dark:bg-slate-800 rounded-3xl border border-gray-100 dark:border-slate-700 h-full">
+                            <h4 class="text-sm font-bold text-gray-900 dark:text-white uppercase mb-6 flex items-center gap-2">
+                                <i data-lucide="music" class="w-4 h-4"></i> Ambient Mixer
+                            </h4>
+                            <div class="space-y-4">
+                                <button onclick="toggleSound('rain')" id="btn-rain" class="w-full flex items-center p-4 rounded-2xl bg-gray-50 dark:bg-slate-900 border-2 border-transparent hover:border-blue-200 dark:hover:border-blue-800 transition group opacity-60 hover:opacity-100">
+                                    <div class="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-300 mr-4"><i data-lucide="cloud-rain" class="w-5 h-5"></i></div>
+                                    <span class="font-bold text-gray-700 dark:text-gray-300">Rain</span>
+                                    <div class="ml-auto w-3 h-3 rounded-full bg-gray-300 dark:bg-slate-600 group-[.scale-110]:bg-green-500 transition-colors"></div>
+                                </button>
+                                <button onclick="toggleSound('forest')" id="btn-forest" class="w-full flex items-center p-4 rounded-2xl bg-gray-50 dark:bg-slate-900 border-2 border-transparent hover:border-green-200 dark:hover:border-green-800 transition group opacity-60 hover:opacity-100">
+                                    <div class="w-10 h-10 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center text-green-600 dark:text-green-300 mr-4"><i data-lucide="trees" class="w-5 h-5"></i></div>
+                                    <span class="font-bold text-gray-700 dark:text-gray-300">Forest</span>
+                                    <div class="ml-auto w-3 h-3 rounded-full bg-gray-300 dark:bg-slate-600 group-[.scale-110]:bg-green-500 transition-colors"></div>
+                                </button>
+                                <button onclick="toggleSound('waves')" id="btn-waves" class="w-full flex items-center p-4 rounded-2xl bg-gray-50 dark:bg-slate-900 border-2 border-transparent hover:border-cyan-200 dark:hover:border-cyan-800 transition group opacity-60 hover:opacity-100">
+                                    <div class="w-10 h-10 bg-cyan-100 dark:bg-cyan-900 rounded-full flex items-center justify-center text-cyan-600 dark:text-cyan-300 mr-4"><i data-lucide="waves" class="w-5 h-5"></i></div>
+                                    <span class="font-bold text-gray-700 dark:text-gray-300">Waves</span>
+                                    <div class="ml-auto w-3 h-3 rounded-full bg-gray-300 dark:bg-slate-600 group-[.scale-110]:bg-green-500 transition-colors"></div>
+                                </button>
+                            </div>
+                            <audio id="audio-rain" loop src="https://actions.google.com/sounds/v1/weather/rain_heavy_loud.ogg"></audio>
+                            <audio id="audio-forest" loop src="https://actions.google.com/sounds/v1/relaxing/forest_sounds.ogg"></audio>
+                            <audio id="audio-waves" loop src="https://actions.google.com/sounds/v1/water/waves_crashing.ogg"></audio>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-2">
+                        <div class="bg-white dark:bg-slate-800 p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100 dark:border-slate-700">
+                            <h3 class="font-bold text-gray-900 dark:text-white mb-6 text-lg">What do you need?</h3>
+                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
+                                <button onclick="selectMeditationType('Anxiety Relief')" class="p-4 rounded-2xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 font-bold text-sm transition border border-transparent hover:border-indigo-200">Anxiety</button>
+                                <button onclick="selectMeditationType('Deep Sleep')" class="p-4 rounded-2xl bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 font-bold text-sm transition border border-transparent hover:border-blue-200">Sleep</button>
+                                <button onclick="selectMeditationType('Morning Focus')" class="p-4 rounded-2xl bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 hover:bg-orange-100 dark:hover:bg-orange-900/50 font-bold text-sm transition border border-transparent hover:border-orange-200">Focus</button>
+                                <button onclick="selectMeditationType('Self-Compassion')" class="p-4 rounded-2xl bg-pink-50 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300 hover:bg-pink-100 dark:hover:bg-pink-900/50 font-bold text-sm transition border border-transparent hover:border-pink-200">Self Love</button>
+                                <button onclick="selectMeditationType('Stress Release')" class="p-4 rounded-2xl bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/50 font-bold text-sm transition border border-transparent hover:border-red-200">De-Stress</button>
+                                <button onclick="selectMeditationType('Walking Mindful')" class="p-4 rounded-2xl bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/50 font-bold text-sm transition border border-transparent hover:border-green-200">Walking</button>
+                            </div>
+
+                            <div id="meditation-player" class="hidden animate-fade-in border-t border-gray-100 dark:border-slate-700 pt-8">
+                                <div class="flex flex-col items-center text-center max-w-xl mx-auto">
+                                    <h4 id="meditation-title" class="font-bold text-gray-900 dark:text-white text-2xl mb-4">...</h4>
+                                    <div id="meditation-text" class="text-lg text-gray-600 dark:text-gray-300 leading-relaxed mb-8 text-left w-full"></div>
+                                    
+                                    <button onclick="playMeditationAudio()" id="play-meditation-btn" class="mb-8 flex items-center gap-2 bg-gray-100 dark:bg-slate-700 text-gray-800 dark:text-gray-200 px-6 py-3 rounded-full text-sm font-bold hover:bg-gray-200 dark:hover:bg-slate-600 transition">
+                                        <i data-lucide="volume-2" class="w-5 h-5"></i> Play Voice
+                                    </button>
+
+                                    <div class="w-full bg-teal-50 dark:bg-teal-900/20 rounded-3xl p-8 mb-4 border border-teal-100 dark:border-teal-800">
+                                        <div id="timer-display" class="text-6xl font-mono font-bold text-teal-800 dark:text-teal-400 mb-6">10:00</div>
+                                        <div class="flex justify-center gap-4">
+                                            <button onclick="startTimer()" id="btn-start-timer" class="bg-teal-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-teal-700 transition shadow-lg shadow-teal-200 dark:shadow-none">Start Timer</button>
+                                            <button onclick="stopTimer()" id="btn-stop-timer" class="hidden bg-red-100 text-red-600 px-8 py-3 rounded-xl font-bold hover:bg-red-200 transition">End Session</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="meditation-loading" class="hidden py-16 text-center text-teal-600 dark:text-teal-400">
+                                <i data-lucide="loader-2" class="animate-spin w-12 h-12 mx-auto mb-4"></i>
+                                <p class="text-lg font-medium">Generating your session...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white dark:bg-slate-800 p-6 md:p-8 rounded-3xl border border-gray-100 dark:border-slate-700 shadow-sm">
+                    <h3 class="font-bold text-gray-900 dark:text-white text-lg mb-4">Recent Sessions</h3>
+                    <div id="meditation-history-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-chat" class="view-section hidden absolute inset-0 flex flex-col h-full bg-[#FAFAFA] dark:bg-slate-900">
+            <div class="max-w-5xl mx-auto w-full h-full flex flex-col shadow-xl bg-white dark:bg-slate-950 border-x border-gray-100 dark:border-slate-800">
+                <header class="p-6 border-b border-gray-100 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur sticky top-0 z-10">
+                    <h2 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+                        <div class="p-2 bg-teal-100 dark:bg-teal-900 rounded-full"><i data-lucide="message-circle" class="text-teal-600 dark:text-teal-400 w-6 h-6"></i></div>
+                        Serene AI
+                    </h2>
+                </header>
+                <div class="flex-1 overflow-y-auto w-full bg-gray-50 dark:bg-slate-900">
+                    <div id="chat-messages" class="flex-1 p-6 space-y-6 scrollbar-thin"></div>
+                    <div id="typing-indicator" class="hidden px-8 py-4">
+                        <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl rounded-tl-none inline-flex gap-2 w-20 justify-center shadow-sm border border-gray-100 dark:border-slate-700">
+                            <span class="typing-dot w-2 h-2 bg-gray-400 rounded-full"></span>
+                            <span class="typing-dot w-2 h-2 bg-gray-400 rounded-full"></span>
+                            <span class="typing-dot w-2 h-2 bg-gray-400 rounded-full"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-6 bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-slate-800">
+                    <div class="flex gap-3 bg-gray-50 dark:bg-slate-800 p-3 rounded-2xl border border-gray-200 dark:border-slate-600 focus-within:ring-2 focus-within:ring-teal-100 dark:focus-within:ring-teal-900 transition-all">
+                        <input type="text" id="chat-input" placeholder="Type how you feel..." class="flex-1 bg-transparent outline-none text-gray-700 dark:text-gray-200 px-2" onkeypress="handleEnter(event)">
+                        <button onclick="sendMessage()" id="send-btn" class="bg-teal-600 text-white p-3 rounded-xl hover:bg-teal-700 transition"><i data-lucide="send" class="w-5 h-5"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-resources" class="view-section hidden absolute inset-0 overflow-y-auto p-4 md:p-8 space-y-6">
+            <div class="max-w-6xl mx-auto space-y-8 pb-20">
+                <header class="bg-white dark:bg-slate-800 p-8 rounded-3xl border border-gray-100 dark:border-slate-700 shadow-sm">
+                    <h2 class="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+                        <i data-lucide="library" class="text-teal-600 dark:text-teal-400 w-8 h-8"></i> Knowledge & Help
+                    </h2>
+                </header>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="lg:col-span-2 bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-gray-100 dark:border-slate-700">
+                        <h3 class="font-bold text-gray-900 dark:text-white text-xl mb-6">Self-Help Library</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="p-5 rounded-2xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800">
+                                <h4 class="font-bold text-gray-900 dark:text-gray-100 mb-2">Sleep Hygiene</h4>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">1. No screens 1hr before bed.<br>2. Cool room (20°C).<br>3. 4-7-8 breathing.</p>
+                            </div>
+                            <div class="p-5 rounded-2xl bg-teal-50 dark:bg-teal-900/20 border border-teal-100 dark:border-teal-800">
+                                <h4 class="font-bold text-gray-900 dark:text-gray-100 mb-2">Anxiety SOS</h4>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">3-3-3 Rule: Name 3 things you see, 3 sounds you hear, move 3 body parts.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="lg:col-span-1 bg-red-50 dark:bg-red-900/20 p-8 rounded-3xl border border-red-100 dark:border-red-900">
+                        <h3 class="font-bold text-red-800 dark:text-red-300 mb-6 text-lg">Crisis Support</h3>
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-center bg-white/60 dark:bg-slate-800/60 p-3 rounded-xl"><span class="text-sm font-medium dark:text-gray-300">Emergency</span><a href="tel:999" class="bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg">999</a></div>
+                            <div class="flex justify-between items-center bg-white/60 dark:bg-slate-800/60 p-3 rounded-xl"><span class="text-sm font-medium dark:text-gray-300">HEAL Line</span><a href="tel:15555" class="bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg">15555</a></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="view-journal" class="view-section hidden absolute inset-0 overflow-y-auto p-4 md:p-8 space-y-6">
+            <div class="max-w-4xl mx-auto space-y-6 pb-20">
+                <header><h2 class="text-3xl font-bold text-gray-900 dark:text-white">Your Journey</h2></header>
+                <div id="journal-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+            </div>
+        </div>
+
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        let GEMINI_API_KEY = ""; 
+        let isDemo = false;
+        let db, auth, currentUser;
+        
+        try {
+            let firebaseConfig;
+            if (typeof __firebase_config !== 'undefined') {
+                firebaseConfig = JSON.parse(__firebase_config);
+                GEMINI_API_KEY = "";
+                startFullMode(firebaseConfig);
+            } else { throw new Error("No Config"); }
+        } catch (e) {
+            document.getElementById('loading-spinner').classList.add('hidden');
+            document.getElementById('config-panel').classList.remove('hidden');
+        }
+
+        window.handleSetup = () => {
+            document.getElementById('setup-error').classList.add('hidden');
+            GEMINI_API_KEY = document.getElementById('api-key-input').value.trim();
+            const configStr = document.getElementById('firebase-config-input').value.trim();
+            if(configStr) {
+                try { startFullMode(JSON.parse(configStr)); } 
+                catch(e) { document.getElementById('setup-error').innerText = "Invalid JSON."; document.getElementById('setup-error').classList.remove('hidden'); }
+            } else { startDemoMode(); }
+        };
+
+        function startFullMode(config) {
+            try {
+                const app = initializeApp(config);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) { signInWithCustomToken(auth, __initial_auth_token); } 
+                else { signInAnonymously(auth); }
+                onAuthStateChanged(auth, (user) => {
+                    if (user) { currentUser = user; document.getElementById('loading-screen').classList.add('hidden'); initAppListeners(); }
+                });
+            } catch(e) { alert("Failed to connect to Firebase."); }
+        }
+
+        function startDemoMode() {
+            isDemo = true;
+            currentUser = { uid: 'demo-user' };
+            document.getElementById('loading-screen').classList.add('hidden');
+            if(localStorage.getItem('mindcare_chat')) chatMessages = JSON.parse(localStorage.getItem('mindcare_chat'));
+            initAppListeners();
+        }
+
+        function initAppListeners() {
+            listenToMoods();
+            listenToChat();
+            listenToMeditations();
+            renderMoodSelector();
+        }
+
+        // Navigation Logic (Desktop + Mobile)
+        window.router = (viewId) => {
+            document.querySelectorAll('.nav-item').forEach(el => {
+                el.classList.remove('text-teal-600', 'dark:text-teal-400', 'bg-teal-50', 'dark:bg-slate-700');
+                el.classList.add('text-gray-500', 'dark:text-gray-400', 'hover:text-gray-900', 'dark:hover:text-gray-200');
+            });
+            const activeBtn = document.getElementById(`nav-${viewId}`);
+            if(activeBtn) {
+                activeBtn.classList.add('text-teal-600', 'dark:text-teal-400', 'bg-teal-50', 'dark:bg-slate-700');
+                activeBtn.classList.remove('text-gray-500', 'dark:text-gray-400');
+            }
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+            const target = document.getElementById(`view-${viewId}`);
+            if(target) { target.classList.remove('hidden'); target.classList.add('animate-fade-in'); }
+            lucide.createIcons();
+        };
+
+        // Mobile Bottom Nav handling would go here if implementing standard bottom bar logic again, 
+        // but top nav works for both based on your request to move it up.
+
+        window.toggleDarkMode = () => {
+            const html = document.documentElement;
+            const isDark = html.classList.toggle('dark');
+            lucide.createIcons();
+        }
+
+        const moodOptions = [
+            { value: 'great', label: 'Great', icon: 'sun', color: 'bg-orange-400' },
+            { value: 'good', label: 'Good', icon: 'smile', color: 'bg-teal-400' },
+            { value: 'okay', label: 'Okay', icon: 'meh', color: 'bg-blue-400' },
+            { value: 'bad', label: 'Bad', icon: 'frown', color: 'bg-indigo-400' },
+            { value: 'awful', label: 'Rough', icon: 'cloud-rain', color: 'bg-slate-500' },
+        ];
+
+        window.saveMood = async (value) => {
+            if(!currentUser) return;
+            const log = { value, createdAt: isDemo ? new Date() : serverTimestamp(), note: '' };
+            if(isDemo) {
+                let logs = JSON.parse(localStorage.getItem('mindcare_moods') || "[]");
+                logs.unshift(log);
+                localStorage.setItem('mindcare_moods', JSON.stringify(logs));
+                renderMoodSelector(true);
+                updateJournalUI(logs);
+            } else {
+                try { await addDoc(collection(db, 'artifacts', 'mindcare-v1', 'users', currentUser.uid, 'moods'), log); } catch(e) {}
+            }
+        };
+
+        function listenToMoods() {
+            if(isDemo) {
+                let logs = JSON.parse(localStorage.getItem('mindcare_moods') || "[]");
+                logs = logs.map(l => ({...l, createdAt: new Date(l.createdAt)}));
+                const isToday = logs[0] && logs[0].createdAt.toDateString() === new Date().toDateString();
+                renderMoodSelector(isToday);
+                document.getElementById('streak-count').innerText = logs.length;
+                updateJournalUI(logs);
+            } else {
+                const q = query(collection(db, 'artifacts', 'mindcare-v1', 'users', currentUser.uid, 'moods'), orderBy('createdAt', 'desc'), limit(20));
+                onSnapshot(q, (snapshot) => {
+                    const logs = snapshot.docs.map(doc => doc.data());
+                    renderMoodSelector(logs[0] && logs[0].createdAt?.toDate().toDateString() === new Date().toDateString());
+                    document.getElementById('streak-count').innerText = snapshot.docs.length;
+                    updateJournalUI(logs);
+                });
+            }
+        }
+
+        function renderMoodSelector(hasCheckedIn = false) {
+            const container = document.getElementById('mood-container');
+            if (hasCheckedIn) {
+                container.innerHTML = `<div class="text-center py-8"><div class="inline-block p-4 rounded-full bg-teal-50 dark:bg-teal-900 text-teal-600 dark:text-teal-300 mb-4"><i data-lucide="sun" class="w-12 h-12"></i></div><h3 class="text-xl font-bold text-gray-800 dark:text-gray-100">Check-in Complete!</h3><p class="text-gray-500 dark:text-gray-400 mb-6">You're doing great.</p><button onclick="router('chat')" class="bg-teal-600 text-white px-8 py-3 rounded-full font-bold hover:bg-teal-700 transition">Chat with Serene</button></div>`;
+            } else {
+                let html = '<div class="grid grid-cols-5 gap-2">';
+                moodOptions.forEach(opt => {
+                    html += `<button onclick="saveMood('${opt.value}')" class="flex flex-col items-center p-4 rounded-2xl bg-gray-50 dark:bg-slate-900 text-gray-400 dark:text-gray-500 hover:bg-white dark:hover:bg-slate-700 hover:shadow-md transition-all duration-300 hover:scale-105 active:scale-95"><i data-lucide="${opt.icon}" class="w-8 h-8 mb-2"></i><span class="text-xs font-bold uppercase tracking-wider">${opt.label}</span></button>`;
+                });
+                html += '</div>';
+                container.innerHTML = html;
+            }
+            lucide.createIcons();
+        }
+
+        function updateJournalUI(logs) {
+            const list = document.getElementById('journal-list');
+            if(logs.length === 0) { list.innerHTML = `<div class="col-span-full text-center py-12 text-gray-400"><p>No entries yet.</p></div>`; return; }
+            list.innerHTML = logs.map(log => {
+                const opt = moodOptions.find(o => o.value === log.value) || moodOptions[2];
+                const date = log.createdAt instanceof Date ? log.createdAt.toLocaleDateString() : (log.createdAt ? log.createdAt.toDate().toLocaleDateString() : 'Just now');
+                return `<div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm flex items-center justify-between animate-fade-in"><div class="flex items-center gap-4"><div class="w-12 h-12 rounded-full bg-gray-50 dark:bg-slate-700 flex items-center justify-center"><i data-lucide="${opt.icon}" class="${opt.color.replace('bg-', 'text-').replace('400', '500')} w-6 h-6"></i></div><div><p class="font-bold text-gray-800 dark:text-gray-200 capitalize text-lg">${log.value}</p><p class="text-sm text-gray-400 flex items-center gap-1"><i data-lucide="calendar" class="w-3 h-3"></i> ${date}</p></div></div></div>`;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        let chatMessages = [];
+        function listenToChat() {
+            if(isDemo) { renderChat(); } else {
+                const q = query(collection(db, 'artifacts', 'mindcare-v1', 'users', currentUser.uid, 'chat'), orderBy('createdAt', 'asc'), limit(50));
+                onSnapshot(q, (snapshot) => { chatMessages = snapshot.docs.map(doc => doc.data()); renderChat(); });
+            }
+        }
+
+        window.sendMessage = async () => {
+            const input = document.getElementById('chat-input');
+            const text = input.value.trim();
+            if(!text || !currentUser) return;
+            input.value = '';
+            const userMsg = { text, role: 'user', createdAt: new Date() };
+            
+            if(isDemo) {
+                chatMessages.push(userMsg);
+                localStorage.setItem('mindcare_chat', JSON.stringify(chatMessages));
+                renderChat();
+                document.getElementById('typing-indicator').classList.remove('hidden');
+                const replyText = await generateAIResponse(text);
+                setTimeout(() => {
+                    chatMessages.push({ text: replyText, role: 'assistant', createdAt: new Date() });
+                    localStorage.setItem('mindcare_chat', JSON.stringify(chatMessages));
+                    document.getElementById('typing-indicator').classList.add('hidden');
+                    renderChat();
+                }, 800);
+            } else {
+                await addDoc(collection(db, 'artifacts', 'mindcare-v1', 'users', currentUser.uid, 'chat'), { text, role: 'user', createdAt: serverTimestamp() });
+                document.getElementById('typing-indicator').classList.remove('hidden');
+                const reply = await generateAIResponse(text);
+                await addDoc(collection(db, 'artifacts', 'mindcare-v1', 'users', currentUser.uid, 'chat'), { text: reply, role: 'assistant', createdAt: serverTimestamp() });
+                document.getElementById('typing-indicator').classList.add('hidden');
+            }
+        };
+
+        function renderChat() {
+            const container = document.getElementById('chat-messages');
+            if(chatMessages.length === 0) {
+                container.innerHTML = `<div class="text-center text-gray-400 mt-20 animate-fade-in"><div class="w-20 h-20 bg-teal-50 dark:bg-teal-900 rounded-full flex items-center justify-center mx-auto mb-4"><i data-lucide="message-circle" class="text-teal-300 dark:text-teal-600 w-10 h-10"></i></div><p class="text-lg font-medium">Say hello to Serene.</p></div>`;
+            } else {
+                container.innerHTML = chatMessages.map(msg => {
+                    const isUser = msg.role === 'user';
+                    const safeText = msg.text ? msg.text.replace(/'/g, "\\'") : "";
+                    return `<div class="flex ${isUser ? 'justify-end' : 'justify-start'} animate-fade-in group"><div class="flex items-end gap-2 max-w-[85%]">${!isUser ? `<button onclick="playMessageAudio('${safeText}')" class="mb-2 opacity-50 hover:opacity-100 transition p-2 bg-gray-100 dark:bg-slate-700 rounded-full text-teal-600 dark:text-teal-400"><i data-lucide="volume-2" class="w-4 h-4"></i></button>` : ''}<div class="p-5 rounded-2xl text-base leading-relaxed shadow-sm ${isUser ? 'bg-teal-600 text-white rounded-tr-none' : 'bg-white dark:bg-slate-700 text-gray-800 dark:text-gray-200 border border-gray-100 dark:border-slate-600 rounded-tl-none'}">${msg.text}</div></div></div>`;
+                }).join('');
+            }
+            container.scrollTop = container.scrollHeight;
+            lucide.createIcons();
+        }
+
+        window.handleEnter = (e) => { if (e.key === 'Enter') window.sendMessage(); };
+
+        async function generateAIResponse(userMessage) {
+            if(!GEMINI_API_KEY) return "Please add a Gemini API Key in Setup.";
+            const historyText = chatMessages.slice(-5).map(msg => `${msg.role}: ${msg.text}`).join('\n');
+            const systemPrompt = `You are 'Serene', a warm mental health companion. Keep answers concise (max 3 sentences).`;
+            try {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_API_KEY}`, {
+                    method: "POST", headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: `${systemPrompt}\n\n${historyText}\nUser: ${userMessage}\nSerene:` }] }] })
+                });
+                const data = await res.json();
+                return data.candidates?.[0]?.content?.parts?.[0]?.text || "I'm listening.";
+            } catch(e) { return "Connection error."; }
+        }
+
+        // --- MEDITATION & AUDIO ---
+        let timerInterval, timeLeft = 600, currentMeditationType = "", currentMeditationText = "";
+
+        window.selectMeditationType = async (type) => {
+             currentMeditationType = type;
+             document.getElementById('meditation-player').classList.add('hidden');
+             document.getElementById('meditation-loading').classList.remove('hidden');
+             clearInterval(timerInterval);
+             timeLeft = 600;
+             document.getElementById('timer-display').innerText = "10:00";
+             document.getElementById('btn-start-timer').classList.remove('hidden');
+             document.getElementById('btn-stop-timer').classList.add('hidden');
+
+             if(!GEMINI_API_KEY) {
+                 setTimeout(() => {
+                     currentMeditationText = "Close your eyes. Breathe in deeply... count to four. Hold... count to four. Exhale... count to four.";
+                     setupMeditationUI(currentMeditationText, type);
+                 }, 1000);
+             } else {
+                 const prompt = `Write a short meditation for ${type} in 50 words. Start with 'Close your eyes'.`;
+                 try {
+                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_API_KEY}`, {
+                        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                    });
+                    const data = await res.json();
+                    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                    setupMeditationUI(text || "Breathe.", type);
+                 } catch(e) { setupMeditationUI("Breathe deeply.", type); }
+             }
+        }
+
+        function setupMeditationUI(text, type) {
+            currentMeditationText = text;
+            document.getElementById('meditation-title').innerText = type;
+            document.getElementById('meditation-text').innerText = text;
+            document.getElementById('meditation-loading').classList.add('hidden');
+            document.getElementById('meditation-player').classList.remove('hidden');
+        }
+
+        window.startTimer = () => {
+            document.getElementById('btn-start-timer').classList.add('hidden');
+            document.getElementById('btn-stop-timer').classList.remove('hidden');
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                const m = Math.floor(timeLeft / 60).toString().padStart(2, '0');
+                const s = (timeLeft % 60).toString().padStart(2, '0');
+                document.getElementById('timer-display').innerText = `${m}:${s}`;
+                if (timeLeft <= 0) { window.stopTimer(); }
+            }, 1000);
+        };
+
+        window.stopTimer = async () => {
+            clearInterval(timerInterval);
+            document.getElementById('timer-display').innerText = "Finished";
+            document.getElementById('btn-stop-timer').classList.add('hidden');
+            const duration = 600 - timeLeft;
+            if(duration > 5) { 
+                const session = { type: currentMeditationType, duration: duration, createdAt: isDemo ? new Date() : serverTimestamp() };
+                if(isDemo) {
+                    let history = JSON.parse(localStorage.getItem('mindcare_meditations') || "[]");
+                    history.unshift(session);
+                    localStorage.setItem('mindcare_meditations', JSON.stringify(history));
+                    renderMeditationHistory(history);
+                } else {
+                    await addDoc(collection(db, 'artifacts', 'mindcare-v1', 'users', currentUser.uid, 'meditations'), session);
+                }
+            }
+        };
+
+        function listenToMeditations() {
+            if(isDemo) {
+                 let history = JSON.parse(localStorage.getItem('mindcare_meditations') || "[]");
+                 renderMeditationHistory(history);
+            } else {
+                const q = query(collection(db, 'artifacts', 'mindcare-v1', 'users', currentUser.uid, 'meditations'), orderBy('createdAt', 'desc'), limit(5));
+                onSnapshot(q, (snapshot) => { renderMeditationHistory(snapshot.docs.map(d => d.data())); });
+            }
+        }
+
+        function renderMeditationHistory(list) {
+            const container = document.getElementById('meditation-history-list');
+            if(list.length === 0) { container.innerHTML = ""; return; }
+            container.innerHTML = list.map(item => {
+                 const mins = Math.floor(item.duration / 60);
+                 const secs = item.duration % 60;
+                 return `<div class="text-xs bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 p-3 rounded-lg flex justify-between text-gray-600 dark:text-gray-300 shadow-sm"><span class="font-medium">${item.type}</span><span class="font-mono opacity-70">${mins}m ${secs}s</span></div>`;
+            }).join('');
+        }
+
+        window.toggleSound = (type) => {
+            const audio = document.getElementById(`audio-${type}`);
+            const btn = document.getElementById(`btn-${type}`);
+            if (audio.paused) {
+                audio.play();
+                btn.classList.remove('opacity-60');
+                btn.classList.add('scale-110', 'border-teal-500', 'dark:border-teal-400');
+            } else {
+                audio.pause();
+                btn.classList.add('opacity-60');
+                btn.classList.remove('scale-110', 'border-teal-500', 'dark:border-teal-400');
+            }
+        };
+
+        window.generateDailyQuote = async () => {
+            if(!GEMINI_API_KEY) { document.getElementById('quote-content').innerHTML = "<p>Demo Quote: You are stronger than you know.</p>"; return; }
+             try {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_API_KEY}`, {
+                    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: "Short philosophical quote. Format: Quote — Author." }] }] })
+                });
+                const data = await res.json();
+                const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                if(text) document.getElementById('quote-content').innerHTML = `<p class="text-2xl font-medium leading-snug">${text}</p>`;
+             } catch(e) {}
+        };
+
+        window.playMessageAudio = (text) => {
+            if (!text) return;
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = 0.9; 
+            const voices = window.speechSynthesis.getVoices();
+            const preferredVoice = voices.find(voice => voice.name.includes("Female") || voice.name.includes("Google"));
+            if (preferredVoice) utterance.voice = preferredVoice;
+            window.speechSynthesis.speak(utterance);
+        };
+        window.playMeditationAudio = () => { if(currentMeditationText) window.playMessageAudio(currentMeditationText); };
+
+        lucide.createIcons();
+    </script>
+</body>
+</html>
