@@ -1,4 +1,4 @@
-# 🧠 MindCare - AI-Powered Mental Health Companion
+# ❤️ MindCare - AI-Powered Mental Health Companion
 
 ![Project Status](https://img.shields.io/badge/Status-Deployed-success?style=flat-square)
 ![Platform](https://img.shields.io/badge/Platform-Web%20(Mobile%20First)-blue?style=flat-square)
