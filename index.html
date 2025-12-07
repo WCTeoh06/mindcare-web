@@ -671,7 +671,14 @@
         async function generateAIResponse(userMessage) {
             if(!GEMINI_API_KEY) return "Please add a Gemini API Key in Setup.";
             const historyText = chatMessages.slice(-5).map(msg => `${msg.role}: ${msg.text}`).join('\n');
-            const systemPrompt = "You are 'Serene', a warm mental health companion. Keep answers concise (max 3 sentences).";
+            const systemPrompt = `
+    You are 'Serene', a mental health support companion. 
+    RULES:
+    1. ONLY answer questions related to mental health, emotions, stress, mindfulness, or well-being.
+    2. If the user asks about anything else (like math, coding, history, or facts), politely refuse. Say: "I am here to support your mental well-being. Let's focus on how you're feeling."
+    3. Keep answers concise (max 3 sentences).
+    4. If the user expresses self-harm, immediately provide the crisis numbers: 999 or 15555.
+    `;
             try {
                 // FIXED: Template String & Quotes
                 const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`, {
