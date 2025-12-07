@@ -7,7 +7,7 @@
 **MindCare** is a responsive, full-stack single-page application designed to provide accessible mental health support. It combines daily mood tracking, guided meditation, and crisis resources with **Serene**, an AI companion powered by Google Gemini, to help users manage stress and anxiety effectively.
 
 ## 🚀 Live Demo
-**[Click here to view the Live Project on Vercel](https://mindcare-web-swart.vercel.app/)** *(Note: You will need a Gemini API Key and Firebase Config to enter the app. See Setup below.)*
+**[Click here to view the Live Project on Vercel](https://mindcare-web-teoh-wei-chengs-projects.vercel.app/)** *(Note: You will need a Gemini API Key and Firebase Config to enter the app. See Setup below.)*
 
 ---
 
